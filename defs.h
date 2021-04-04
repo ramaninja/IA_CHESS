@@ -83,7 +83,7 @@ typedef struct {
 	int score;
 } gen_t;
 
-typedef unsigned long HashType; // Type pour les hash
+typedef unsigned long long HashType; // Type pour les hash
 /* an element of the history stack, with the information
    necessary to take a move back. */
 typedef struct {
@@ -104,6 +104,8 @@ typedef struct {
 
 #define USE_HASH
 #define HT_SIZE 10000000
+
+#define HT_LEARNING_SIZE 5000
 
 // DM2 - optim hash de Zobrist
 #define USE_FAST_HASH
@@ -143,7 +145,7 @@ typedef struct
 
 typedef struct
 {
-	HtTyp hash;
+	HashType hash;
 	short   score;
 	unsigned char depth;    // le nombre de coup avant la quiescence.
 } HtLearning;

@@ -19,16 +19,39 @@ jmp_buf env;
 BOOL stop_search;
 
 // TO REMOVE : USE HIST_DAT STRUCT
-int lastPlayedScore = 0;
-int previousScore = 0;
+short lastPlayedScore = 0;
+short previousScore = MOINS_INFINI;
+
+unsigned char lastPlayedDepth;
+
+void learn(HashType hash, unsigned char depth, int eval) 
+{
+	printf("Là on apprend ! \n");
+
+	// learn
+
+	// getLearn
+}
+
+HtLearning * getLearn(HashType hash)
+{
+
+}
 
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
+	//printf("%d | %d | ", lastPlayedScore, previousScore);
 	if (lastPlayedScore < previousScore - 100) // C’est mieux d’utiliser hist_dat…
 	{
+		// Détection chute de score => apprentissage
 		// On revient à la position précédente "p"
+		takeback();
 		// Learn position
-		//…;
+		learn(hash, lastPlayedDepth, lastPlayedScore);
+		//…;.
+		// Bring back original position
+		makemove(hist_dat[hply].m.b);
+		//printf("HELLO");
 	}
 	previousScore = lastPlayedScore;
 }
@@ -59,6 +82,7 @@ void think(int output)
 		/* make sure to take back the line we were searching */
 		while (ply)
 			takeback();
+		//checkLearning();
 		return;
 	}
 
@@ -71,11 +95,20 @@ void think(int output)
 	memset(pv, 0, sizeof(pv));
 	memset(history, 0, sizeof(history));
 	initHT();
+
+	// TODO : init previousScore
+	/*previousScore = MOINS_INFINI;*/
+
 	if (output == 1)
 		printf("ply      nodes  score  time pv\n");
 	for (i = 1; i <= max_depth; ++i) {
 		follow_pv = TRUE;
-		x = search(-10000, 10000, i);
+		x = search(MOINS_INFINI, PLUS_INFINI, i);
+
+		// TODO : get score for checkLearning variables
+		lastPlayedScore = x;
+		lastPlayedDepth = i;
+
 		if (output == 1)
 			printf("%3d  %9lld  %5d %10.3f", i, nodes, x, (float)(get_ms() - start_time)/1000.0);
 		else if (output == 2)
@@ -90,6 +123,8 @@ void think(int output)
 		if (x > 9000 || x < -9000)
 			break;
 	}
+
+	checkLearning();
 }
 
 

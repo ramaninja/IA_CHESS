@@ -110,10 +110,10 @@ void init_hash()
 	for (i = 0; i < 2; ++i)
 		for (j = 0; j < 6; ++j)
 			for (k = 0; k < 64; ++k)
-				hash_piece[i][j][k] = hash_rand();
-	hash_side = hash_rand();
+				hash_piece[i][j][k] = Aleatoire64();
+	hash_side = Aleatoire64();
 	for (i = 0; i < 64; ++i)
-		hash_ep[i] = hash_rand();
+		hash_ep[i] = Aleatoire64();
 }
 
 
