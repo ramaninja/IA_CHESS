@@ -77,6 +77,10 @@ uint64 Aleatoire64()
 
 // ----------------------------------------------------------------------------
 
+void initHtLearning()
+{
+	memset(HT_Learning, 0, sizeof(HT_LEARNING_SIZE));
+}
 
 /* init_board() sets the board to the initial game state. */
 
@@ -97,6 +101,8 @@ void init_board()
 	hply = 0;
 	set_hash();  /* init_hash() must be called before this function */
 	first_move[0] = 0;
+
+	//initHtLearning();
 }
 
 

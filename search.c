@@ -29,28 +29,45 @@ void learn(HashType hash, unsigned char depth, int eval)
 	printf("Là on apprend ! \n");
 
 	// learn
+	HtLearning * pHtLearning;
+	int index = hash % (HT_LEARNING_SIZE);
+	pHtLearning = &HT_Learning[index];
+
+	if (pHtLearning->depth <= depth)
+	{
+		pHtLearning->hash = hash;
+		pHtLearning->depth = depth;
+
+		SCALE_MATE_VALUE(eval);
+		pHtLearning->score = eval;
+	}
 
 	// getLearn
 }
 
 HtLearning * getLearn(HashType hash)
 {
+	HtLearning * pHtLearning;
+	pHtLearning = &HT_Learning[hash % (HT_LEARNING_SIZE)];
 
+	if (pHtLearning->hash == hash)
+		return pHtLearning;
+	return NULL;
 }
 
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
 	//printf("%d | %d | ", lastPlayedScore, previousScore);
-	if (lastPlayedScore < previousScore - 100) // C’est mieux d’utiliser hist_dat…
+	if (lastPlayedScore < previousScore - 75) // C’est mieux d’utiliser hist_dat…
 	{
 		// Détection chute de score => apprentissage
 		// On revient à la position précédente "p"
 		takeback();
 		// Learn position
-		learn(hash, lastPlayedDepth, lastPlayedScore);
+		learn(hash, lastPlayedDepth + 1, /*-*/ -lastPlayedScore);
 		//…;.
 		// Bring back original position
-		makemove(hist_dat[hply].m.b);
+		makemove(hist_dat[hply /*lastPlayedDepth + 1*/].m.b);
 		//printf("HELLO");
 	}
 	previousScore = lastPlayedScore;
@@ -95,6 +112,7 @@ void think(int output)
 	memset(pv, 0, sizeof(pv));
 	memset(history, 0, sizeof(history));
 	initHT();
+	//initHtLearning();
 
 	// TODO : init previousScore
 	/*previousScore = MOINS_INFINI;*/
@@ -164,10 +182,29 @@ int search(int alpha, int beta, int depth)
 	c = in_check(side);
 	if (c)
 		++depth;
+
+#ifdef USE_LEARNING
+
+	HtLearning * pLearning = getLearn(hash);
+	if (pLearning)
+	{
+		int pLearnEval = pLearning->score;
+		UNSCALE_MATE_VALUE(pLearnEval);
+
+		if (!follow_pv && pLearning->depth >= depth)
+		{
+			return pLearnEval;
+		}
+	}
+
+#endif // USE_LEARNING
+
+
 #ifdef USE_HASH
+
 	move transpositionMove;
 	transpositionMove.u= 0;
-	HtTyp *pTransp = getTT();
+	HtTyp * pTransp = getTT();
 	if (pTransp)
 	{
 		transpositionMove = pTransp->move;
@@ -202,7 +239,9 @@ int search(int alpha, int beta, int depth)
 			}
 		}
 	}
+
 #endif
+
 	gen();
 	if (follow_pv)  /* are we following the PV? */
 		sort_pv(pv[0][ply]);
@@ -303,6 +342,20 @@ int quiesce(int alpha,int beta)
 		return eval();
 	if (hply >= HIST_STACK - 1)
 		return eval();
+
+#ifdef USE_LEARNING
+
+	HtLearning* pLearning = getLearn(hash);
+	if (pLearning)
+	{
+		int pLearnEval = pLearning->score;
+		UNSCALE_MATE_VALUE(pLearnEval);
+
+		if (!follow_pv)
+			return pLearnEval;
+	}
+
+#endif // USE_LEARNING
 
 #ifdef USE_HASH
 	HtTyp *pTransp = getTT();

@@ -9,7 +9,7 @@
 #include "defs.h"
 
 HtTyp HT[HT_SIZE];
-HtLearning htLearning[HT_LEARNING_SIZE];
+HtLearning HT_Learning[HT_LEARNING_SIZE];
 
 /* the board representation */
 int color[64];  /* LIGHT, DARK, or EMPTY */

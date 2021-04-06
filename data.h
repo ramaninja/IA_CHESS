@@ -45,6 +45,7 @@ extern char piece_char[6];
 extern int init_color[64];
 extern int init_piece[64];
 extern HtTyp HT[HT_SIZE];
+extern HtLearning HT_Learning[HT_LEARNING_SIZE];
 
 #ifdef _DEBUG
 	#define ASSERT(a) if (!(a)) {int n=0; n/=n;};

@@ -105,6 +105,7 @@ typedef struct {
 #define USE_HASH
 #define HT_SIZE 10000000
 
+#define USE_LEARNING
 #define HT_LEARNING_SIZE 5000
 
 // DM2 - optim hash de Zobrist
