@@ -58,6 +58,7 @@ void xboard();
 void print_result();
 void bench();
 extern void initHT();
+extern void initHtLearning();
 extern HtTyp *getTT();
 extern void putTT(int depth, int eval, move m, int alpha, int beta);
 

@@ -93,6 +93,8 @@ typedef struct {
 	int ep;
 	int fifty;
 	HashType hash;
+	short score;
+	unsigned char depth;
 } hist_t;
 
 // Assertions

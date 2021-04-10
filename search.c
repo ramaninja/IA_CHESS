@@ -26,7 +26,7 @@ unsigned char lastPlayedDepth;
 
 void learn(HashType hash, unsigned char depth, int eval) 
 {
-	printf("Là on apprend ! \n");
+	printf("----------------------------------> Là on apprend ! \n");
 
 	// learn
 	HtLearning * pHtLearning;
@@ -58,19 +58,29 @@ HtLearning * getLearn(HashType hash)
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
 	//printf("%d | %d | ", lastPlayedScore, previousScore);
-	if (lastPlayedScore < previousScore - 75 || lastPlayedScore >= 150) // C’est mieux d’utiliser hist_dat…
+	//if (lastPlayedScore < previousScore - 75 || lastPlayedScore >= 150) // C’est mieux d’utiliser hist_dat…
+	//{
+	//	// Détection chute de score => apprentissage
+	//	// On revient à la position précédente "p"
+	//	takeback();
+	//	// Learn position
+	//	learn(hash, lastPlayedDepth + 1, /*-*/ -lastPlayedScore);
+	//	// Bring back original position
+	//	makemove(hist_dat[hply /*lastPlayedDepth + 1*/].m.b);
+	//}
+	//previousScore = lastPlayedScore;
+
+	if (hist_dat[hply].score < hist_dat[hply-2].score - 75
+		|| hist_dat[hply].score >= 150)
 	{
-		// Détection chute de score => apprentissage
-		// On revient à la position précédente "p"
-		takeback();
-		// Learn position
-		learn(hash, lastPlayedDepth + 1, /*-*/ -lastPlayedScore);
-		//…;.
-		// Bring back original position
-		makemove(hist_dat[hply /*lastPlayedDepth + 1*/].m.b);
-		//printf("HELLO");
+		//takeback();
+		/*--hply;
+		learn(hist_dat[hply].hash, hist_dat[hply + 1].depth + 1, -hist_dat[hply + 1].score);
+		++hply;*/
+		//makemove(hist_dat[hply].m.b);
+		//learn(hist_dat[hply].hash, hist_dat[hply].depth, hist_dat[hply].score);
+		learn(hist_dat[hply-1].hash, hist_dat[hply].depth + 1, -hist_dat[hply].score);
 	}
-	previousScore = lastPlayedScore;
 }
 
 
@@ -124,8 +134,10 @@ void think(int output)
 		x = search(MOINS_INFINI, PLUS_INFINI, i);
 
 		// TODO : get score for checkLearning variables
-		lastPlayedScore = x;
-		lastPlayedDepth = i;
+		//lastPlayedScore = x;
+		hist_dat[hply].score = x;
+		//lastPlayedDepth = i;
+		hist_dat[hply].depth = i;
 
 		if (output == 1)
 			printf("%3d  %9lld  %5d %10.3f", i, nodes, x, (float)(get_ms() - start_time)/1000.0);

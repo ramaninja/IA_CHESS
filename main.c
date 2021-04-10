@@ -51,6 +51,7 @@ int main()
 	init_board();
 	open_book();
 	gen();
+	initHtLearning();
 	initHT();
 	computer_side = EMPTY;
 	max_time = 1 << 25;
