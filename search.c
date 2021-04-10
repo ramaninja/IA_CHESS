@@ -28,10 +28,15 @@ void learn(HashType hash, unsigned char depth, int eval)
 {
 	printf("----------------------------------> Là on apprend ! \n");
 
-	// learn
 	HtLearning * pHtLearning;
 	int index = hash % (HT_LEARNING_SIZE);
 	pHtLearning = &HT_Learning[index];
+
+	FILE* f;
+	int file_index = index * sizeof(HtLearning);
+
+	f = fopen("learned_mouv.dat", "wb");
+	fseek(f, file_index, SEEK_SET);
 
 	if (pHtLearning->depth <= depth)
 	{
@@ -40,7 +45,11 @@ void learn(HashType hash, unsigned char depth, int eval)
 
 		SCALE_MATE_VALUE(eval);
 		pHtLearning->score = eval;
+
+		fwrite(pHtLearning, sizeof(HtLearning), 1, f);
 	}
+
+	fclose(f);
 
 	// getLearn
 }

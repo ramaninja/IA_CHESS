@@ -8,6 +8,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "defs.h"
 #include "data.h"
 #include "protos.h"
@@ -79,7 +80,29 @@ uint64 Aleatoire64()
 
 void initHtLearning()
 {
-	memset(HT_Learning, 0, sizeof(HT_LEARNING_SIZE));
+	FILE* f;
+	size_t nb_entre;
+
+	f = fopen("learned_mouv.dat", "r");
+	int file_size = HT_LEARNING_SIZE * sizeof(HtLearning);
+
+	if (f == NULL)
+	{
+		memset(HT_Learning, 0, sizeof(HT_LEARNING_SIZE));
+		f = fopen("learned_mouv.dat", "w");
+		fseek(f, file_size, SEEK_SET);
+		fputc('\0', f);
+		fclose(f);
+	}
+	else
+	{
+		printf("READ FILE\n");
+		nb_entre = fread(&HT_Learning, sizeof(HtLearning), HT_LEARNING_SIZE, f);
+
+		printf("%d entrees trouvees\n", (int)nb_entre);
+
+		fclose(f);
+	}
 }
 
 /* init_board() sets the board to the initial game state. */
