@@ -58,7 +58,7 @@ HtLearning * getLearn(HashType hash)
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
 	//printf("%d | %d | ", lastPlayedScore, previousScore);
-	if (lastPlayedScore < previousScore - 75) // C’est mieux d’utiliser hist_dat…
+	if (lastPlayedScore < previousScore - 75 || lastPlayedScore >= 150) // C’est mieux d’utiliser hist_dat…
 	{
 		// Détection chute de score => apprentissage
 		// On revient à la position précédente "p"
