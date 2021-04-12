@@ -35,7 +35,7 @@ void learn(HashType hash, unsigned char depth, int eval)
 	FILE* f;
 	int file_index = index * sizeof(HtLearning);
 
-	f = fopen("learned_mouv.dat", "wb");
+	f = fopen("learned_mouv.dat", "r+");
 	fseek(f, file_index, SEEK_SET);
 
 	if (pHtLearning->depth <= depth)
@@ -49,6 +49,8 @@ void learn(HashType hash, unsigned char depth, int eval)
 		fwrite(pHtLearning, sizeof(HtLearning), 1, f);
 	}
 
+	/*fseek(f, HT_LEARNING_SIZE * sizeof(HtLearning), SEEK_SET);
+	fputc('\0', f);*/
 	fclose(f);
 
 	// getLearn
