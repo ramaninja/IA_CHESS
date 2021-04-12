@@ -110,6 +110,44 @@ void initHtLearning()
 	}
 }
 
+void syncBoard()
+{
+	int light = 2;
+	int dark = 18;
+
+	memset(board, 0, sizeof(board));
+
+	int i;
+	for (i = 0; i < 33; i++) pospiece[i] = PIECE_DEAD;
+
+	for (i = 0; i < 64; ++i) {
+		if (color[i] != EMPTY) // On trouve une pièce sur l’échiquier
+		{
+			// MAJ des tableaux pospiece[] et board[]
+			if (color[i]) {	// pièce noire
+				if (piece[i] == KING) { // si roi, alors on assigne première case
+					pospiece[17] = i;
+					board[i] = 17;
+				}
+				else {
+					pospiece[dark] = i;
+					board[i] = dark++;
+				}
+			}
+			else {	// pièce blanche
+				if (piece[i] == KING) { // si roi, alors on assigne première case
+					pospiece[1] = i;
+					board[i] = 1;
+				}
+				else {
+					pospiece[light] = i;
+					board[i] = light++;
+				}
+			}
+		}
+	}
+}
+
 /* init_board() sets the board to the initial game state. */
 
 void init_board()
@@ -129,7 +167,7 @@ void init_board()
 	hply = 0;
 	set_hash();  /* init_hash() must be called before this function */
 	first_move[0] = 0;
-
+	syncBoard();
 	//initHtLearning();
 }
 
@@ -222,6 +260,30 @@ BOOL in_check(int s)
 	return TRUE;  /* shouldn't get here */
 }
 
+void initAttackTables()
+{
+	memset(canAttack, 0, sizeof(canAttack));
+
+	int j, n, piece_type, orig_pos;
+
+	for (piece_type = 1; piece_type < 6; piece_type++) {	// on boucle sur tout type de pièce (sauf pion)
+		for (orig_pos = 0; orig_pos < 64; orig_pos++) {		// on boucle sur toutes les cases de l'échiqier
+			for (j = 0; j < offsets[piece_type]; ++j) {		// parcours le nombre de déplacement possible
+				for (n = orig_pos;;) {
+					n = mailbox[mailbox64[n] + offset[piece_type][j]]; // vérifie sur quelle case de la mailbox on tombe
+
+					if (n == -1) { // c'est pas possible si hors du plateau
+						break;
+					}
+					canAttack[piece_type][orig_pos][n] = TRUE;
+					if (!slide[piece_type]) { // la pièce est limité à un mouvement d'une seule case
+						break;
+					}
+				}
+			}
+		}
+	}
+}
 
 /* attack() returns TRUE if square sq is being attacked by side
    s and FALSE otherwise. */
@@ -230,36 +292,45 @@ BOOL attack(int sq, int s)
 {
 	int i, j, n;
 
-	for (i = 0; i < 64; ++i)
-		if (color[i] == s) {
-			if (piece[i] == PAWN) {
-				if (s == LIGHT) {
-					if (COL(i) != 0 && i - 9 == sq)
+	int min, max;
+	min = (s * 16) + 1;
+	max = min + 16;
+
+	for (i = min; i < max; i++)
+	{
+		if (pospiece[i] == PIECE_DEAD) continue;
+		if (piece[pospiece[i]] == PAWN) {
+			if (s == LIGHT) {
+				if (COL(pospiece[i]) != 0 && pospiece[i] - 9 == sq)
+					return TRUE;
+				if (COL(pospiece[i]) != 7 && pospiece[i] - 7 == sq)
+					return TRUE;
+			}
+			else {
+				if (COL(pospiece[i]) != 0 && pospiece[i] + 7 == sq)
+					return TRUE;
+				if (COL(pospiece[i]) != 7 && pospiece[i] + 9 == sq)
+					return TRUE;
+			}
+		}
+		else {
+			if (!canAttack[piece[pospiece[i]]][pospiece[i]][sq]) continue;
+			for (j = 0; j < offsets[piece[pospiece[i]]]; ++j) { // parcours le nombre de déplacement possible
+				for (n = pospiece[i];;) {
+					n = mailbox[mailbox64[n] + offset[piece[pospiece[i]]][j]]; // vérifie sur quelle case de la mailbox on tombe
+					if (n == -1) // c'est pas possible si hors du plateau
+						break;
+					if (n == sq) // on tombe sur la case à attaquer
 						return TRUE;
-					if (COL(i) != 7 && i - 7 == sq)
-						return TRUE;
-				}
-				else {
-					if (COL(i) != 0 && i + 7 == sq)
-						return TRUE;
-					if (COL(i) != 7 && i + 9 == sq)
-						return TRUE;
+					if (color[n] != EMPTY) // il y a un obstacle
+						break;
+					if (!slide[piece[pospiece[i]]]) // la pièce est limité à un mouvement d'une seule case
+						break;
 				}
 			}
-			else
-				for (j = 0; j < offsets[piece[i]]; ++j)
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
-							break;
-						if (n == sq)
-							return TRUE;
-						if (color[n] != EMPTY)
-							break;
-						if (!slide[piece[i]])
-							break;
-					}
 		}
+	}
+
 	return FALSE;
 }
 
@@ -277,48 +348,58 @@ void gen()
 	/* so far, we have no moves for the current ply */
 	first_move[ply + 1] = first_move[ply];
 
-	for (i = 0; i < 64; ++i)
-		if (color[i] == side) {
-			if (piece[i] == PAWN) {
-				if (side == LIGHT) {
-					if (COL(i) != 0 && color[i - 9] == DARK)
-						gen_push(i, i - 9, 17);
-					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
-					if (color[i - 8] == EMPTY) {
-						gen_push(i, i - 8, 16);
-						if (i >= 48 && color[i - 16] == EMPTY)
-							gen_push(i, i - 16, 24);
-					}
-				}
-				else {
-					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
-					if (COL(i) != 7 && color[i + 9] == LIGHT)
-						gen_push(i, i + 9, 17);
-					if (color[i + 8] == EMPTY) {
-						gen_push(i, i + 8, 16);
-						if (i <= 15 && color[i + 16] == EMPTY)
-							gen_push(i, i + 16, 24);
-					}
+	int min, max;
+	min = (side * 16) + 1;
+	max = min + 16;
+
+	for (i = min; i < max; i++)
+	{
+		if (pospiece[i] == PIECE_DEAD) continue;
+		if (piece[pospiece[i]] == PAWN) {
+
+			if (side == LIGHT) {
+				if (COL(pospiece[i]) != 0 && color[pospiece[i] - 9] == DARK)
+					gen_push(pospiece[i], pospiece[i] - 9, 17);
+				if (COL(pospiece[i]) != 7 && color[pospiece[i] - 7] == DARK)
+					gen_push(pospiece[i], pospiece[i] - 7, 17);
+				if (color[pospiece[i] - 8] == EMPTY) {
+					gen_push(pospiece[i], pospiece[i] - 8, 16);
+					if (pospiece[i] >= 48 && color[pospiece[i] - 16] == EMPTY)
+						gen_push(pospiece[i], pospiece[i] - 16, 24);
 				}
 			}
 			else
-				for (j = 0; j < offsets[piece[i]]; ++j)
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
-							break;
-						if (color[n] != EMPTY) {
-							if (color[n] == xside)
-								gen_push(i, n, 1);
-							break;
-						}
-						gen_push(i, n, 0);
-						if (!slide[piece[i]])
-							break;
-					}
+			{
+				if (COL(pospiece[i]) != 0 && color[pospiece[i] + 7] == LIGHT)
+					gen_push(pospiece[i], pospiece[i] + 7, 17);
+				if (COL(pospiece[i]) != 7 && color[pospiece[i] + 9] == LIGHT)
+					gen_push(pospiece[i], pospiece[i] + 9, 17);
+				if (color[pospiece[i] + 8] == EMPTY) {
+					gen_push(pospiece[i], pospiece[i] + 8, 16);
+					if (pospiece[i] <= 15 && color[pospiece[i] + 16] == EMPTY)
+						gen_push(pospiece[i], pospiece[i] + 16, 24);
+				}
+			}
 		}
+		else
+		{
+			for (j = 0; j < offsets[piece[pospiece[i]]]; ++j)
+				for (n = pospiece[i];;)
+				{
+					n = mailbox[mailbox64[n] + offset[piece[pospiece[i]]][j]];
+					if (n == -1)
+						break;
+					if (color[n] != EMPTY) {
+						if (color[n] == xside)
+							gen_push(pospiece[i], n, 1);
+						break;
+					}
+					gen_push(pospiece[i], n, 0);
+					if (!slide[piece[pospiece[i]]])
+						break;
+				}
+		}
+	}
 
 	/* generate castle moves */
 	if (side == LIGHT) {
@@ -333,7 +414,7 @@ void gen()
 		if (castle & 8)
 			gen_push(E8, C8, 2);
 	}
-	
+
 	/* generate en passant moves */
 	if (ep != -1) {
 		if (side == LIGHT) {
@@ -361,41 +442,54 @@ void gen_caps()
 	int i, j, n;
 
 	first_move[ply + 1] = first_move[ply];
-	for (i = 0; i < 64; ++i)
-		if (color[i] == side) {
-			if (piece[i]==PAWN) {
-				if (side == LIGHT) {
-					if (COL(i) != 0 && color[i - 9] == DARK)
-						gen_push(i, i - 9, 17);
-					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
-					if (i <= 15 && color[i - 8] == EMPTY)
-						gen_push(i, i - 8, 16);
-				}
-				if (side == DARK) {
-					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
-					if (COL(i) != 7 && color[i + 9] == LIGHT)
-						gen_push(i, i + 9, 17);
-					if (i >= 48 && color[i + 8] == EMPTY)
-						gen_push(i, i + 8, 16);
+	int min, max;
+	min = (side * 16) + 1;
+	max = min + 16;
+
+	for (i = min; i < max; i++)
+	{
+		if (pospiece[i] == PIECE_DEAD) continue;
+		if (piece[pospiece[i]] == PAWN) {
+
+			if (side == LIGHT) {
+				if (COL(pospiece[i]) != 0 && color[pospiece[i] - 9] == DARK)
+					gen_push(pospiece[i], pospiece[i] - 9, 17);
+				if (COL(pospiece[i]) != 7 && color[pospiece[i] - 7] == DARK)
+					gen_push(pospiece[i], pospiece[i] - 7, 17);
+				if (pospiece[i] <= 15 && color[pospiece[i] - 8] == EMPTY) {
+					gen_push(pospiece[i], pospiece[i] - 8, 16);
 				}
 			}
 			else
-				for (j = 0; j < offsets[piece[i]]; ++j)
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
-							break;
-						if (color[n] != EMPTY) {
-							if (color[n] == xside)
-								gen_push(i, n, 1);
-							break;
-						}
-						if (!slide[piece[i]])
-							break;
-					}
+			{
+				if (COL(pospiece[i]) != 0 && color[pospiece[i] + 7] == LIGHT)
+					gen_push(pospiece[i], pospiece[i] + 7, 17);
+				if (COL(pospiece[i]) != 7 && color[pospiece[i] + 9] == LIGHT)
+					gen_push(pospiece[i], pospiece[i] + 9, 17);
+				if (pospiece[i] >= 48 && color[pospiece[i] + 8] == EMPTY) {
+					gen_push(pospiece[i], pospiece[i] + 8, 16);
+				}
+			}
 		}
+		else
+		{
+			for (j = 0; j < offsets[piece[pospiece[i]]]; ++j)
+				for (n = pospiece[i];;)
+				{
+					n = mailbox[mailbox64[n] + offset[piece[pospiece[i]]][j]];
+					if (n == -1)
+						break;
+					if (color[n] != EMPTY) {
+						if (color[n] == xside)
+							gen_push(pospiece[i], n, 1);
+						break;
+					}
+					if (!slide[piece[pospiece[i]]])
+						break;
+				}
+		}
+	}
+
 	if (ep != -1) {
 		if (side == LIGHT) {
 			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
@@ -530,6 +624,11 @@ BOOL makemove(move_bytes m)
 #endif
 		color[to] = color[from];
 		piece[to] = piece[from];
+
+		board[to] = board[from];
+		pospiece[board[to]] = to;
+
+		board[from] = 0;
 		color[from] = EMPTY;
 		piece[from] = EMPTY;
 	}
@@ -540,11 +639,12 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].castle = castle;
 	hist_dat[hply].ep = ep;
 	hist_dat[hply].fifty = fifty;
+	hist_dat[hply].capture_pos = board[(int)m.to];
 #ifndef USE_FAST_HASH
 	hist_dat[hply].hash = hash; // Ligne déplacée en début de fonction à cause du roque
 #endif
-	++ply;
-	++hply;
+	/*++ply;
+	++hply;*/
 
 	/* update the castle, en passant, and
 	   fifty-move-draw variables */
@@ -587,8 +687,14 @@ BOOL makemove(move_bytes m)
 	hash ^= hash_piece[side][piece[(int)m.to]][(int)m.to]^// On pose la pièce qui doit se trouver dans la case m.to (capturée ou promue)
 	        hash_piece[side][piece[(int)m.from]][(int)m.from];// On supprime la pièce de de la case from 
 #endif
+
+	if (board[(int)m.to] != 0) { pospiece[board[(int)m.to]] = PIECE_DEAD; }
+
 	color[(int)m.from] = EMPTY;
 	piece[(int)m.from] = EMPTY;
+	board[(int)m.to] = board[(int)m.from];
+	pospiece[board[(int)m.to]] = (int)m.to;
+	board[(int)m.from] = 0;
 
 	/* erase the pawn if this is an en passant move */
 	if (m.bits & 4) {
@@ -598,6 +704,10 @@ BOOL makemove(move_bytes m)
 #endif
 			color[m.to + 8] = EMPTY;
 			piece[m.to + 8] = EMPTY;
+			hist_dat[hply].capture_pos = board[m.to + 8];
+
+			pospiece[board[m.to + 8]] = PIECE_DEAD;
+			board[m.to + 8] = 0;
 		}
 		else {
 #ifdef USE_FAST_HASH
@@ -605,8 +715,15 @@ BOOL makemove(move_bytes m)
 #endif
 			color[m.to - 8] = EMPTY;
 			piece[m.to - 8] = EMPTY;
+			hist_dat[hply].capture_pos = board[m.to - 8];
+
+			pospiece[board[m.to - 8]] = PIECE_DEAD;
+			board[m.to - 8] = 0;
 		}
 	}
+
+	++ply;
+	++hply;
 
 	/* switch sides and test for legality (if we can capture
 	   the other guy's king, it's an illegal position and
@@ -645,6 +762,10 @@ void takeback()
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
 	color[(int)m.from] = side;
+
+	board[(int)m.from] = board[(int)m.to];
+	pospiece[board[(int)m.from]] = (int)m.from;
+
 	if (m.bits & 32)
 		piece[(int)m.from] = PAWN;
 	else
@@ -652,10 +773,13 @@ void takeback()
 	if (hist_dat[hply].capture == EMPTY) {
 		color[(int)m.to] = EMPTY;
 		piece[(int)m.to] = EMPTY;
+		board[(int)m.to] = 0;
 	}
 	else {
 		color[(int)m.to] = xside;
 		piece[(int)m.to] = hist_dat[hply].capture;
+		board[(int)m.to] = hist_dat[hply].capture_pos;
+		pospiece[hist_dat[hply].capture_pos] = (int)m.to;
 	}
 	if (m.bits & 2) {
 		int from, to;
@@ -684,6 +808,9 @@ void takeback()
 		}
 		color[to] = side;
 		piece[to] = ROOK;
+		board[to] = board[from];
+		pospiece[board[to]] = to;
+		board[from] = 0;
 		color[from] = EMPTY;
 		piece[from] = EMPTY;
 	}
@@ -691,10 +818,14 @@ void takeback()
 		if (side == LIGHT) {
 			color[m.to + 8] = xside;
 			piece[m.to + 8] = PAWN;
+			board[m.to + 8] = hist_dat[hply].capture_pos;
+			pospiece[hist_dat[hply].capture_pos] = m.to + 8;
 		}
 		else {
 			color[m.to - 8] = xside;
 			piece[m.to - 8] = PAWN;
+			board[m.to - 8] = hist_dat[hply].capture_pos;
+			pospiece[hist_dat[hply].capture_pos] = m.to - 8;
 		}
 	}
 }

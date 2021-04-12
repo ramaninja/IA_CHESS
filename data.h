@@ -10,6 +10,9 @@
    of the source files so they can use the data.c variables */
 #include "defs.h"
 
+char canAttack[6][64][64]; // canAttack[TypeDePiece][Source][Destination]
+extern int pospiece[33];
+extern int board[64];
 extern int color[64];
 extern int piece[64];
 extern int side;

@@ -22,6 +22,7 @@ void gen_promote(int from, int to, int bits);
 BOOL makemove(move_bytes m);
 void takeback();
 void initHT();
+void initAttackTables();
 
 /* book.c */
 void open_book();

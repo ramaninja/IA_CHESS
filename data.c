@@ -12,6 +12,10 @@ HtTyp HT[HT_SIZE];
 HtLearning HT_Learning[HT_LEARNING_SIZE];
 
 /* the board representation */
+
+int pospiece[33];	/* le tableau des positions des pièces de l'échiquier */
+int board[64];		/* l’échiquier contenant les index de pospiece */
+
 int color[64];  /* LIGHT, DARK, or EMPTY */
 int piece[64];  /* PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, or EMPTY */
 int side;  /* the side to move */

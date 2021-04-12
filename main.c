@@ -49,13 +49,14 @@ int main()
 	printf("\n");
 	init_hash();
 	init_board();
+	initAttackTables();
 	open_book();
 	gen();
 	initHtLearning();
 	initHT();
 	computer_side = EMPTY;
 	max_time = 1 << 25;
-	max_depth = 7;
+	max_depth = 4;
 	for (;;) {
 		if (side == computer_side) {  /* computer's turn */
 			
@@ -485,10 +486,13 @@ void bench()
 	fifty = 0;
 	ply = 0;
 	hply = 0;
+
+	syncBoard();
+
 	set_hash();
 	print_board();
 	max_time = 1 << 25;
-	max_depth = 6;
+	max_depth = 5;
 	initHT(); 
 	for (i = 0; i < 3; ++i) {
 		//initHT(); // Placé là pour obtenir les mêmes performances pour chaque bench
