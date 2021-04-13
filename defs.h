@@ -113,6 +113,8 @@ typedef struct {
 #define USE_LEARNING
 #define HT_LEARNING_SIZE 5000
 
+#define SAVE_OPTION_1
+
 // DM2 - optim hash de Zobrist
 #define USE_FAST_HASH
 

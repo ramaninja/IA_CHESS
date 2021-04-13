@@ -26,9 +26,18 @@ unsigned char lastPlayedDepth;
 
 void learn(HashType hash, unsigned char depth, int eval) 
 {
+	FILE* log;
+
+	log = fopen("logs.txt", "a");
+
+	fprintf(log, "depth : %d, score : %d\n", depth, eval);
+
+	fclose(log);
+
+#ifndef SAVE_OPTION_1
 	printf("----------------------------------> Là on apprend ! \n");
 
-	HtLearning * pHtLearning;
+	HtLearning* pHtLearning;
 	int index = hash % (HT_LEARNING_SIZE);
 	pHtLearning = &HT_Learning[index];
 
@@ -48,12 +57,32 @@ void learn(HashType hash, unsigned char depth, int eval)
 
 		fwrite(pHtLearning, sizeof(HtLearning), 1, f);
 	}
-
-	/*fseek(f, HT_LEARNING_SIZE * sizeof(HtLearning), SEEK_SET);
-	fputc('\0', f);*/
 	fclose(f);
+#else
+	printf("----------------------------------> Là on apprend ! \n");
 
-	// getLearn
+	HtLearning* pHtLearning;
+	int index = hash % (HT_LEARNING_SIZE);
+	pHtLearning = &HT_Learning[index];
+
+	FILE* f;
+	//int file_index = index * sizeof(HtLearning);
+
+	f = fopen("learned_mouv.dat", "r+");
+	//fseek(f, file_index, SEEK_SET);
+
+	if (pHtLearning->depth <= depth)
+	{
+		pHtLearning->hash = hash;
+		pHtLearning->depth = depth;
+
+		SCALE_MATE_VALUE(eval);
+		pHtLearning->score = eval;
+
+		fwrite(HT_Learning, sizeof(HtLearning) * HT_LEARNING_SIZE, 1, f);
+	}
+	fclose(f);
+#endif
 }
 
 HtLearning * getLearn(HashType hash)
@@ -69,7 +98,7 @@ HtLearning * getLearn(HashType hash)
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
 	//printf("%d | %d | ", lastPlayedScore, previousScore);
-	//if (lastPlayedScore < previousScore - 75 || lastPlayedScore >= 150) // C’est mieux d’utiliser hist_dat…
+	//if (lastPlayedScore < previousScore - 75 || lastPlayedScore < -150) // C’est mieux d’utiliser hist_dat…
 	//{
 	//	// Détection chute de score => apprentissage
 	//	// On revient à la position précédente "p"
@@ -82,7 +111,7 @@ void checkLearning() // Fonction vérifiant si le score a chuté et si on doit app
 	//previousScore = lastPlayedScore;
 
 	if (hist_dat[hply].score < hist_dat[hply-2].score - 75
-		|| hist_dat[hply].score >= 150)
+		|| hist_dat[hply].score < -150)
 	{
 		//takeback();
 		/*--hply;
@@ -90,7 +119,7 @@ void checkLearning() // Fonction vérifiant si le score a chuté et si on doit app
 		++hply;*/
 		//makemove(hist_dat[hply].m.b);
 		//learn(hist_dat[hply].hash, hist_dat[hply].depth, hist_dat[hply].score);
-		learn(hist_dat[hply-1].hash, hist_dat[hply].depth + 1, -hist_dat[hply].score);
+		learn(hist_dat[hply-1].hash, hist_dat[hply].depth, -hist_dat[hply].score);
 	}
 }
 
@@ -120,7 +149,7 @@ void think(int output)
 		/* make sure to take back the line we were searching */
 		while (ply)
 			takeback();
-		//checkLearning();
+		checkLearning();
 		return;
 	}
 
