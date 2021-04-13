@@ -13,10 +13,12 @@
 #include "protos.h"
 
 
-/* see the beginning of think() */
+ /* see the beginning of think() */
 #include <setjmp.h>
 jmp_buf env;
 BOOL stop_search;
+
+#define SAVE_OPTION_1
 
 // TO REMOVE : USE HIST_DAT STRUCT
 short lastPlayedScore = 0;
@@ -24,18 +26,20 @@ short previousScore = MOINS_INFINI;
 
 unsigned char lastPlayedDepth;
 
-void learn(HashType hash, unsigned char depth, int eval) 
+void learn(HashType hash, unsigned char depth, int eval)
 {
+
+#ifndef SAVE_OPTION_1
 	printf("----------------------------------> Là on apprend ! \n");
 
-	HtLearning * pHtLearning;
+	HtLearning* pHtLearning;
 	int index = hash % (HT_LEARNING_SIZE);
 	pHtLearning = &HT_Learning[index];
 
 	FILE* f;
 	int file_index = index * sizeof(HtLearning);
 
-	f = fopen("learned_mouv.dat", "r+");
+	f = fopen("learned_mouv.dat", "rb+");
 	fseek(f, file_index, SEEK_SET);
 
 	if (pHtLearning->depth <= depth)
@@ -48,17 +52,45 @@ void learn(HashType hash, unsigned char depth, int eval)
 
 		fwrite(pHtLearning, sizeof(HtLearning), 1, f);
 	}
-
-	/*fseek(f, HT_LEARNING_SIZE * sizeof(HtLearning), SEEK_SET);
-	fputc('\0', f);*/
 	fclose(f);
+#else
+	printf("----------------------------------> Là on apprend ! \n");
 
-	// getLearn
+	HtLearning* pHtLearning;
+	int index = hash % (HT_LEARNING_SIZE);
+	pHtLearning = &HT_Learning[index];
+
+	FILE* f;
+	//int file_index = index * sizeof(HtLearning);
+
+	f = fopen("learned_mouv.dat", "rb+");
+	//fseek(f, file_index, SEEK_SET);
+
+	if (pHtLearning->depth <= depth)
+	{
+		pHtLearning->hash = hash;
+		pHtLearning->depth = depth;
+
+		SCALE_MATE_VALUE(eval);
+		pHtLearning->score = eval;
+
+		FILE* log;
+
+		log = fopen("logs.txt", "a");
+
+		fprintf(log, "index : %d, hash : %I64u, depth : %d, score : %d\n", index, hash, depth, eval);
+
+		fclose(log);
+
+		fwrite(HT_Learning, sizeof(HtLearning) * HT_LEARNING_SIZE, 1, f);
+	}
+	fclose(f);
+#endif
 }
 
-HtLearning * getLearn(HashType hash)
+HtLearning* getLearn(HashType hash)
 {
-	HtLearning * pHtLearning;
+	HtLearning* pHtLearning;
 	pHtLearning = &HT_Learning[hash % (HT_LEARNING_SIZE)];
 
 	if (pHtLearning->hash == hash)
@@ -69,7 +101,7 @@ HtLearning * getLearn(HashType hash)
 void checkLearning() // Fonction vérifiant si le score a chuté et si on doit apprendre ou pas le score de la position « P »
 {
 	//printf("%d | %d | ", lastPlayedScore, previousScore);
-	//if (lastPlayedScore < previousScore - 75 || lastPlayedScore >= 150) // C’est mieux d’utiliser hist_dat…
+	//if (lastPlayedScore < previousScore - 75 || lastPlayedScore < -150) // C’est mieux d’utiliser hist_dat…
 	//{
 	//	// Détection chute de score => apprentissage
 	//	// On revient à la position précédente "p"
@@ -81,8 +113,8 @@ void checkLearning() // Fonction vérifiant si le score a chuté et si on doit app
 	//}
 	//previousScore = lastPlayedScore;
 
-	if (hist_dat[hply].score < hist_dat[hply-2].score - 75
-		|| hist_dat[hply].score >= 150)
+	if (hist_dat[hply].score < hist_dat[hply - 2].score - 75
+		|| hist_dat[hply].score < -150)
 	{
 		//takeback();
 		/*--hply;
@@ -90,7 +122,7 @@ void checkLearning() // Fonction vérifiant si le score a chuté et si on doit app
 		++hply;*/
 		//makemove(hist_dat[hply].m.b);
 		//learn(hist_dat[hply].hash, hist_dat[hply].depth, hist_dat[hply].score);
-		learn(hist_dat[hply-1].hash, hist_dat[hply].depth + 1, -hist_dat[hply].score);
+		learn(hist_dat[hply - 1].hash, hist_dat[hply].depth, -hist_dat[hply].score);
 	}
 }
 
@@ -116,11 +148,11 @@ void think(int output)
 	stop_search = FALSE;
 	setjmp(env);
 	if (stop_search) {
-		
+
 		/* make sure to take back the line we were searching */
 		while (ply)
 			takeback();
-		//checkLearning();
+		checkLearning();
 		return;
 	}
 
@@ -151,10 +183,10 @@ void think(int output)
 		hist_dat[hply].depth = i;
 
 		if (output == 1)
-			printf("%3d  %9lld  %5d %10.3f", i, nodes, x, (float)(get_ms() - start_time)/1000.0);
+			printf("%3d  %9lld  %5d %10.3f", i, nodes, x, (float)(get_ms() - start_time) / 1000.0);
 		else if (output == 2)
 			printf("%d %d %lld %lld",
-					i, x, (get_ms() - start_time) / 10, nodes);
+				i, x, (get_ms() - start_time) / 10, nodes);
 		if (output) {
 			for (j = 0; j < pv_length[0]; ++j)
 				printf(" %s", move_str(pv[0][j].b));
@@ -179,7 +211,7 @@ int search(int alpha, int beta, int depth)
 	/* we're as deep as we want to be; call quiesce() to get
 	   a reasonable score and return it. */
 	if (!depth)
-		return quiesce(alpha,beta);
+		return quiesce(alpha, beta);
 	++nodes;
 
 	/* do some housekeeping every 1024 nodes */
@@ -208,7 +240,7 @@ int search(int alpha, int beta, int depth)
 
 #ifdef USE_LEARNING
 
-	HtLearning * pLearning = getLearn(hash);
+	HtLearning* pLearning = getLearn(hash);
 	if (pLearning)
 	{
 		int pLearnEval = pLearning->score;
@@ -226,8 +258,8 @@ int search(int alpha, int beta, int depth)
 #ifdef USE_HASH
 
 	move transpositionMove;
-	transpositionMove.u= 0;
-	HtTyp * pTransp = getTT();
+	transpositionMove.u = 0;
+	HtTyp* pTransp = getTT();
 	if (pTransp)
 	{
 		transpositionMove = pTransp->move;
@@ -294,7 +326,7 @@ int search(int alpha, int beta, int depth)
 		if (x > alpha) {
 			bestmove = gen_dat[i].m;
 #ifdef USE_HASH
-			if (!stop_search) putTT(depth , x, bestmove, alpha, beta);
+			if (!stop_search) putTT(depth, x, bestmove, alpha, beta);
 #endif
 			/* this move caused a cutoff, so increase the history
 			   value so it gets ordered high next time we can
@@ -348,7 +380,7 @@ int search(int alpha, int beta, int depth)
    is to find a position where there isn't a lot going on
    so the static evaluation function will work. */
 
-int quiesce(int alpha,int beta)
+int quiesce(int alpha, int beta)
 {
 	int i, j, x;
 
@@ -381,7 +413,7 @@ int quiesce(int alpha,int beta)
 #endif // USE_LEARNING
 
 #ifdef USE_HASH
-	HtTyp *pTransp = getTT();
+	HtTyp* pTransp = getTT();
 	if (pTransp)
 	{
 		int pTranspEval = pTransp->score;
@@ -475,7 +507,7 @@ void sort_pv(move m)
 	int i;
 
 	follow_pv = FALSE;
-	for(i = first_move[ply]; i < first_move[ply + 1]; ++i)
+	for (i = first_move[ply]; i < first_move[ply + 1]; ++i)
 		if (gen_dat[i].m.u == m.u) {
 			follow_pv = TRUE;
 			gen_dat[i].score += 10000000;

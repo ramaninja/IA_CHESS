@@ -101,7 +101,7 @@ void initHtLearning()
 
 		for (int i = 0; i < HT_LEARNING_SIZE; ++i) {
 			if (HT_Learning[i].hash != 0)
-				printf("case %I64u, hash : %d, depth : %d, score : %d\n", i, HT_Learning[i].hash, HT_Learning[i].depth, HT_Learning[i].score);
+				printf("case %d, hash : %I64u, depth : %d, score : %d\n", i, HT_Learning[i].hash, HT_Learning[i].depth, HT_Learning[i].score);
 		}
 
 		printf("%d entrees trouvees\n", (int)nb_entre);
